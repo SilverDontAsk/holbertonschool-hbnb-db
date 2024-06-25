@@ -5,26 +5,35 @@ Place related functionality
 from src.models.base import Base
 from src.models.city import City
 from src.models.user import User
+from src import db
+from sqlalchemy import Column, String, Float, Integer, ForeignKey
+from sqlalchemy.orm import relationship
+from src import db
 
 
-class Place(Base):
+class Place(Base, db.Model):
     """Place representation"""
 
-    name: str
-    description: str
-    address: str
-    latitude: float
-    longitude: float
-    host_id: str
-    city_id: str
-    price_per_night: int
-    number_of_rooms: int
-    number_of_bathrooms: int
-    max_guests: int
+    __tablename__ = 'places'
 
-    def __init__(self, data: dict | None = None, **kw) -> None:
+    name = Column(String(120), nullable=False)
+    description = Column(String(500), nullable=True)
+    address = Column(String(250), nullable=False)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    host_id = Column(String, ForeignKey('users.id'), nullable=False)
+    city_id = Column(String, ForeignKey('cities.id'), nullable=False)
+    price_per_night = Column(Integer, nullable=False)
+    number_of_rooms = Column(Integer, nullable=False)
+    number_of_bathrooms = Column(Integer, nullable=False)
+    max_guests = Column(Integer, nullable=False)
+
+    host = relationship('User', back_populates='places')
+    city = relationship('City', back_populates='places')
+
+    def __init__(self, data: dict | None = None, **kwargs) -> None:
         """Dummy init"""
-        super().__init__(**kw)
+        super().__init__(**kwargs)
 
         if not data:
             return

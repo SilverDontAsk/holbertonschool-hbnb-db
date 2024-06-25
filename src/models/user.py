@@ -1,20 +1,30 @@
 """
 User related functionality
 """
-
+from src import db
 from src.models.base import Base
+from datetime import datetime
+import uuid
+from sqlalchemy import Column, String, DateTime
+from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm import declared_attr
 
-
-class User(Base):
+class User(Base, db.model):
     """User representation"""
 
-    email: str
-    first_name: str
-    last_name: str
+    __tablename__ = 'users'
 
-    def __init__(self, email: str, first_name: str, last_name: str, **kw):
+    id = db.Column(db.String(36), primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    first_name = db.Column(db.String(80), nullable=False)
+    last_name = db.Column(db.String(80), nullable=False)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    updated_at = db.Column(db.DateTime, onupdate=db.func.current_timestamp())
+
+
+    def __init__(self, email: str, first_name: str, last_name: str, **kwargs):
         """Dummy init"""
-        super().__init__(**kw)
+        super().__init__(**kwargs)
         self.email = email
         self.first_name = first_name
         self.last_name = last_name
@@ -37,37 +47,25 @@ class User(Base):
     @staticmethod
     def create(user: dict) -> "User":
         """Create a new user"""
-        from src.persistence import repo
-
         users: list["User"] = User.get_all()
 
         for u in users:
             if u.email == user["email"]:
                 raise ValueError("User already exists")
-
         new_user = User(**user)
-
-        repo.save(new_user)
-
+        db.session.add(new_user)
+        db.session.commit()
         return new_user
 
     @staticmethod
     def update(user_id: str, data: dict) -> "User | None":
         """Update an existing user"""
-        from src.persistence import repo
-
-        user: User | None = User.get(user_id)
-
+        user = User.query.get(user_id)
         if not user:
             return None
 
-        if "email" in data:
-            user.email = data["email"]
-        if "first_name" in data:
-            user.first_name = data["first_name"]
-        if "last_name" in data:
-            user.last_name = data["last_name"]
-
-        repo.update(user)
+        for key, value in data.items():
+            setattr(user, key, value)
+        db.session.commit()
 
         return user

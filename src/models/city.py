@@ -1,7 +1,9 @@
 """
 City related functionality
 """
-
+from sqlalchemy import Column, String
+from sqlalchemy.orm import relationship
+from src import db
 from src.models.base import Base
 from src.models.country import Country
 
@@ -9,8 +11,10 @@ from src.models.country import Country
 class City(Base):
     """City representation"""
 
-    name: str
-    country_code: str
+    __tablename__ = 'cities'
+
+    name = Column(String(120), nullable=False)
+    country_code = Column(String(3), nullable=False)
 
     def __init__(self, name: str, country_code: str, **kw) -> None:
         """Dummy init"""
