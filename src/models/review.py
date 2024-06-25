@@ -5,15 +5,22 @@ Review related functionality
 from src.models.base import Base
 from src.models.place import Place
 from src.models.user import User
+from src import db
 
 
-class Review(Base):
+class Review(Base, db.Model):
     """Review representation"""
 
-    place_id: str
-    user_id: str
-    comment: str
-    rating: float
+    __tablename__ = 'reviews'
+
+    place_id = db.Column(db.String(36), db.ForeignKey('places.id'), nullable=False)
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    comment = db.Column(db.Text, nullable=False)
+    rating = db.Column(db.Float, nullable=False)
+
+    place = db.relationship('Place', backref=db.backref('reviews', lazy=True))
+    user = db.relationship('User', backref=db.backref('reviews', lazy=True))
+
 
     def __init__(
         self, place_id: str, user_id: str, comment: str, rating: float, **kw
@@ -45,30 +52,24 @@ class Review(Base):
     @staticmethod
     def create(data: dict) -> "Review":
         """Create a new review"""
-        from src.persistence import repo
-
-        user: User | None = User.get(data["user_id"])
+        user = User.query.get(data["user_id"])
+        place = Place.query.get(data["place_id"])
 
         if not user:
             raise ValueError(f"User with ID {data['user_id']} not found")
-
-        place: Place | None = Place.get(data["place_id"])
 
         if not place:
             raise ValueError(f"Place with ID {data['place_id']} not found")
 
         new_review = Review(**data)
-
-        repo.save(new_review)
-
+        db.session.add(new_review)
+        db.session.commit()
         return new_review
 
     @staticmethod
     def update(review_id: str, data: dict) -> "Review | None":
         """Update an existing review"""
-        from src.persistence import repo
-
-        review = Review.get(review_id)
+        review = Review.query.get(review_id)
 
         if not review:
             raise ValueError("Review not found")
@@ -76,6 +77,5 @@ class Review(Base):
         for key, value in data.items():
             setattr(review, key, value)
 
-        repo.update(review)
-
+        db.session.commit()
         return review

@@ -2,6 +2,8 @@
 Country related functionality
 """
 
+from src import db
+
 
 class Country:
     """
@@ -12,9 +14,12 @@ class Country:
     This class is used to get and list countries
     """
 
-    name: str
-    code: str
-    cities: list
+    __tablename__ = 'countries'
+
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    code = db.Column(db.String(3), unique=True, nullable=False)
 
     def __init__(self, name: str, code: str, **kw) -> None:
         """Dummy init"""
@@ -36,27 +41,18 @@ class Country:
     @staticmethod
     def get_all() -> list["Country"]:
         """Get all countries"""
-        from src.persistence import repo
-
-        countries: list["Country"] = repo.get_all("country")
-
-        return countries
+        return Country.query.all()
 
     @staticmethod
     def get(code: str) -> "Country | None":
         """Get a country by its code"""
-        for country in Country.get_all():
-            if country.code == code:
-                return country
-        return None
+        return Country.query.filter_by(code=code).first()
 
     @staticmethod
     def create(name: str, code: str) -> "Country":
         """Create a new country"""
-        from src.persistence import repo
+        n_country = Country(name=name, code=code)
+        db.session.add(n_country)
+        db.session.commit()
 
-        country = Country(name, code)
-
-        repo.save(country)
-
-        return country
+        return n_country
