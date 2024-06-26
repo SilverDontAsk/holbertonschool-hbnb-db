@@ -16,19 +16,18 @@ def get_users():
 def create_user():
     """Creates a new user"""
     data = request.get_json()
+    if not data:
+        abort(400, "Invalid JSON data")
 
     try:
         user = User.create(data)
-    except KeyError as e:
-        abort(400, f"Missing field: {e}")
-    except ValueError as e:
+    except (KeyError, ValueError) as e:
         abort(400, str(e))
 
     if user is None:
         abort(400, "User already exists")
 
     return user.to_dict(), 201
-
 
 def get_user_by_id(user_id: str):
     """Returns a user by ID"""

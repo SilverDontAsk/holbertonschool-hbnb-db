@@ -17,8 +17,10 @@ class Config(ABC):
     This class should not be instantiated directly
     """
 
-    DEBUG = False
-    TESTING = False
+    DEBUG = True
+    TESTING = True
+    USE_DATABASE = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///database.db'
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

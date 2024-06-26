@@ -2,10 +2,9 @@
 Amenity related functionality
 """
 from src import db
-from src.models.base import Base
 
 
-class Amenity(Base, db.Model):
+class Amenity(db.Model):
     """Amenity representation"""
 
     __tablename__ = 'amenities'
@@ -16,13 +15,12 @@ class Amenity(Base, db.Model):
     updated_at = db.Column(db.DateTime, onupdate=db.func.current_timestamp())
 
     def __init__(self, name: str, **kwargs) -> None:
-        """Dummy init"""
+        """Initialization"""
         super().__init__(**kwargs)
-
         self.name = name
 
     def __repr__(self) -> str:
-        """Dummy repr"""
+        """Representation"""
         return f"<Amenity {self.id} ({self.name})>"
 
     def to_dict(self) -> dict:
@@ -37,8 +35,6 @@ class Amenity(Base, db.Model):
     @staticmethod
     def create(data: dict) -> "Amenity":
         """Create a new amenity"""
-        from src.persistence import repo
-
         amenity = Amenity(**data)
         db.session.add(amenity)
         db.session.commit()
@@ -58,7 +54,7 @@ class Amenity(Base, db.Model):
         return amenity
 
 
-class PlaceAmenity(Base):
+class PlaceAmenity(db.Model):
     """PlaceAmenity representation"""
 
     __tablename__ = 'place_amenities'
@@ -70,14 +66,13 @@ class PlaceAmenity(Base):
     updated_at = db.Column(db.DateTime, onupdate=db.func.current_timestamp())
 
     def __init__(self, place_id: str, amenity_id: str, **kwargs) -> None:
-        """Dummy init"""
+        """Initialization"""
         super().__init__(**kwargs)
-
         self.place_id = place_id
         self.amenity_id = amenity_id
 
     def __repr__(self) -> str:
-        """Dummy repr"""
+        """Representation"""
         return f"<PlaceAmenity ({self.place_id} - {self.amenity_id})>"
 
     def to_dict(self) -> dict:
@@ -93,32 +88,24 @@ class PlaceAmenity(Base):
     @staticmethod
     def get(place_id: str, amenity_id: str) -> "PlaceAmenity | None":
         """Get a PlaceAmenity object by place_id and amenity_id"""
-
         return PlaceAmenity.query.filter_by(place_id=place_id, amenity_id=amenity_id).first()
 
     @staticmethod
     def create(data: dict) -> "PlaceAmenity":
         """Create a new PlaceAmenity object"""
-        from src.persistence import repo
-
         new_place_amenity = PlaceAmenity(**data)
         db.session.add(new_place_amenity)
         db.session.commit()
-
         return new_place_amenity
 
     @staticmethod
     def delete(place_id: str, amenity_id: str) -> bool:
         """Delete a PlaceAmenity object by place_id and amenity_id"""
-        from src.persistence import repo
-
         place_amenity = PlaceAmenity.get(place_id, amenity_id)
-
         if not place_amenity:
             return False
         db.session.delete(place_amenity)
         db.session.commit()
-
         return True
 
     @staticmethod

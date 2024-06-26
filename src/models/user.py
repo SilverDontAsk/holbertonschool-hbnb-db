@@ -1,15 +1,7 @@
-"""
-User related functionality
-"""
 from src import db
-from src.models.base import Base
-from datetime import datetime
-import uuid
-from sqlalchemy import Column, String, DateTime
-from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import declared_attr
+from werkzeug.security import generate_password_hash, check_password_hash
 
-class User(Base, db.model):
+class User(db.Model):
     """User representation"""
 
     __tablename__ = 'users'
@@ -20,21 +12,20 @@ class User(Base, db.model):
     last_name = db.Column(db.String(80), nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, onupdate=db.func.current_timestamp())
+    is_admin = db.Column(db.Boolean, default=False)
+    password_hash = db.Column(db.String, nullable=False)
 
-
-    def __init__(self, email: str, first_name: str, last_name: str, **kwargs):
-        """Dummy init"""
+    def __init__(self, email: str, first_name: str, last_name: str, password: str, **kwargs):
         super().__init__(**kwargs)
         self.email = email
         self.first_name = first_name
         self.last_name = last_name
+        self.password_hash = generate_password_hash(password)
 
     def __repr__(self) -> str:
-        """Dummy repr"""
         return f"<User {self.id} ({self.email})>"
 
     def to_dict(self) -> dict:
-        """Dictionary representation of the object"""
         return {
             "id": self.id,
             "email": self.email,
@@ -42,30 +33,16 @@ class User(Base, db.model):
             "last_name": self.last_name,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
+            "is_admin": self.is_admin,
         }
 
-    @staticmethod
-    def create(user: dict) -> "User":
-        """Create a new user"""
-        users: list["User"] = User.get_all()
+    @property
+    def password(self):
+        raise AttributeError('password is not a readable attribute')
 
-        for u in users:
-            if u.email == user["email"]:
-                raise ValueError("User already exists")
-        new_user = User(**user)
-        db.session.add(new_user)
-        db.session.commit()
-        return new_user
+    @password.setter
+    def password(self, password):
+        self.password_hash = generate_password_hash(password)
 
-    @staticmethod
-    def update(user_id: str, data: dict) -> "User | None":
-        """Update an existing user"""
-        user = User.query.get(user_id)
-        if not user:
-            return None
-
-        for key, value in data.items():
-            setattr(user, key, value)
-        db.session.commit()
-
-        return user
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
