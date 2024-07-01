@@ -3,6 +3,7 @@
 from flask.cli import FlaskGroup
 from src import create_app
 from src.data_manager import DataManager
+from src.models.user import User
 
 cli = FlaskGroup(create_app=create_app)
 

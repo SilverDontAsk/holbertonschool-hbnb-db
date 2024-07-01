@@ -1,4 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
+from src.models.user import User
 
 class DataManager:
     def __init__(self, app):
