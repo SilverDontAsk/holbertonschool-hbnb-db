@@ -32,7 +32,7 @@ class User(db.Model):
             "first_name": self.first_name,
             "last_name": self.last_name,
             "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "is_admin": self.is_admin,
         }
 
@@ -46,3 +46,46 @@ class User(db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    @staticmethod
+    def get_all():
+        return User.query.all()
+
+    @staticmethod
+    def get(user_id):
+        return User.query.get(user_id)
+
+    @staticmethod
+    def create(data):
+        user = User(
+            email=data['email'],
+            first_name=data['first_name'],
+            last_name=data['last_name'],
+            password=data['password'],
+            is_admin=data.get('is_admin', False)
+        )
+        db.session.add(user)
+        db.session.commit()
+        return user
+
+    @staticmethod
+    def update(user_id, data):
+        user = User.query.get(user_id)
+        if user:
+            for key, value in data.items():
+                if key == 'password':
+                    user.password = value
+                else:
+                    setattr(user, key, value)
+            db.session.commit()
+        return user
+
+    @staticmethod
+    def delete(user_id):
+        user = User.query.get(user_id)
+        if user:
+            db.session.delete(user)
+            db.session.commit()
+            return True
+        return False
+
