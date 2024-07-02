@@ -88,4 +88,3 @@ class User(db.Model):
             db.session.commit()
             return True
         return False
-
