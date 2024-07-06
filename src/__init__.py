@@ -20,16 +20,21 @@ migrate = Migrate(app, db)
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
 
-# Import routes
-from src.routes import users, auth, amenities, cities, countries, places, reviews
-
-app.register_blueprint(users.bp)
-app.register_blueprint(auth.bp)
-app.register_blueprint(amenities.bp)
-app.register_blueprint(cities.bp)
-app.register_blueprint(countries.bp)
-app.register_blueprint(places.bp)
-app.register_blueprint(reviews.bp)
+from src.routes.auth import auth_bp
+from src.routes.amenities import amenities_bp
+from src.routes.cities import cities_bp
+from src.routes.countries import countries_bp
+from src.routes.places import places_bp
+from src.routes.reviews import reviews_bp
+from src.routes.users import register
+    
+app.register_blueprint(register, url_prefix='/')
+app.register_blueprint(reviews_bp, url_prefix='/')
+app.register_blueprint(auth_bp, url_prefix='/')
+app.register_blueprint(amenities_bp, url_prefix='/')
+app.register_blueprint(cities_bp, url_prefix='/')
+app.register_blueprint(countries_bp, url_prefix='/')
+app.register_blueprint(places_bp, url_prefix='/')
 
 if __name__ == '__main__':
     app.run()

@@ -3,26 +3,23 @@ import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
+from src.routes.users import register
 
-# Load environment variables from .env file
 load_dotenv()
 
 env = os.getenv('ENV', 'development')
 
-# Determine configuration based on environment
 if env == 'production':
-    from src.config import ProductionConfig as Config
+    from src.config import Production as Config
 else:
-    from src.config import DevelopmentConfig as Config
+    from src.config import Development as Config
 
 app = Flask(__name__)
 app.config.from_object(Config)
 
 db = SQLAlchemy(app)
 
-# Import routes to register them with the app
-from src.routes import users
-app.register_blueprint(users)
+app.register_blueprint(register(), url_prefix='/users')
 
 if Config.SQLALCHEMY_DATABASE_URI.startswith('sqlite:///'):
     database_path = Config.SQLALCHEMY_DATABASE_URI.replace('sqlite:///', '')
