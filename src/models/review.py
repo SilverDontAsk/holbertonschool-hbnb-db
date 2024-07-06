@@ -1,80 +1,78 @@
-"""
-Review related functionality
-"""
-
-from src.models.place import Place
-from src.models.user import User
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from src import db
+from src.models.review import Review
+from src.models.user import User
+from src.models.place import Place
 
+reviews_bp = Blueprint('reviews_bp', __name__)
 
-class Review(db.Model):
-    """Review representation"""
+@reviews_bp.route('/reviews', methods=['POST'])
+@jwt_required()
+def create_review():
+    user_id = get_jwt_identity()
+    data = request.get_json()
+    new_review = Review(
+        user_id=user_id,
+        place_id=data['place_id'],
+        comment=data['comment'],
+        rating=data['rating']
+    )
+    db.session.add(new_review)
+    db.session.commit()
+    return jsonify(new_review.to_dict()), 201
 
-    __tablename__ = 'reviews'
+@reviews_bp.route('/reviews/<review_id>', methods=['DELETE'])
+@jwt_required()
+def delete_review(review_id):
+    claims = get_jwt()
+    review = Review.query.get(review_id)
+    if not review:
+        return jsonify({"msg": "Review not found"}), 404
 
-    id = db.Column(db.String(36), primary_key=True)
-    place_id = db.Column(db.String(36), db.ForeignKey('places.id'), nullable=False)
-    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
-    comment = db.Column(db.Text, nullable=False)
-    rating = db.Column(db.Float, nullable=False)
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
-    updated_at = db.Column(db.DateTime, onupdate=db.func.current_timestamp())
+    if not claims.get('is_admin') and review.user_id != get_jwt_identity():
+        return jsonify({"msg": "Administration rights required"}), 403
 
-    place = db.relationship('Place', backref=db.backref('reviews', lazy=True))
-    user = db.relationship('User', backref=db.backref('reviews', lazy=True))
+    db.session.delete(review)
+    db.session.commit()
+    return jsonify({"msg": "Review deleted"}), 200
 
-    def __init__(self, place_id: str, user_id: str, comment: str, rating: float, **kw) -> None:
-        """Initialization"""
-        super().__init__(**kw)
-        self.place_id = place_id
-        self.user_id = user_id
-        self.comment = comment
-        self.rating = rating
+@reviews_bp.route('/reviews', methods=['GET'])
+def get_reviews():
+    reviews = Review.query.all()
+    return jsonify([review.to_dict() for review in reviews]), 200
 
-    def __repr__(self) -> str:
-        """Representation"""
-        return f"<Review {self.id} - '{self.comment[:25]}...'>"
+@reviews_bp.route('/reviews/<review_id>', methods=['GET'])
+def get_review_by_id(review_id):
+    review = Review.query.get(review_id)
+    if not review:
+        return jsonify({"msg": "Review not found"}), 404
+    return jsonify(review.to_dict()), 200
 
-    def to_dict(self) -> dict:
-        """Dictionary representation of the object"""
-        return {
-            "id": self.id,
-            "place_id": self.place_id,
-            "user_id": self.user_id,
-            "comment": self.comment,
-            "rating": self.rating,
-            "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
-        }
+@reviews_bp.route('/places/<place_id>/reviews', methods=['GET'])
+def get_reviews_from_place(place_id):
+    reviews = Review.query.filter_by(place_id=place_id).all()
+    return jsonify([review.to_dict() for review in reviews]), 200
 
-    @staticmethod
-    def create(data: dict) -> "Review":
-        """Create a new review"""
-        user = User.query.get(data["user_id"])
-        place = Place.query.get(data["place_id"])
+@reviews_bp.route('/users/<user_id>/reviews', methods=['GET'])
+def get_reviews_from_user(user_id):
+    reviews = Review.query.filter_by(user_id=user_id).all()
+    return jsonify([review.to_dict() for review in reviews]), 200
 
-        if not user:
-            raise ValueError(f"User with ID {data['user_id']} not found")
+@reviews_bp.route('/reviews/<review_id>', methods=['PUT'])
+@jwt_required()
+def update_review(review_id):
+    claims = get_jwt()
+    review = Review.query.get(review_id)
+    if not review:
+        return jsonify({"msg": "Review not found"}), 404
 
-        if not place:
-            raise ValueError(f"Place with ID {data['place_id']} not found")
+    if not claims.get('is_admin') and review.user_id != get_jwt_identity():
+        return jsonify({"msg": "Administration rights required"}), 403
 
-        new_review = Review(**data)
-        db.session.add(new_review)
-        db.session.commit()
-        return new_review
-
-    @staticmethod
-    def update(review_id: str, data: dict) -> "Review | None":
-        """Update an existing review"""
-        review = Review.query.get(review_id)
-
-        if not review:
-            raise ValueError("Review not found")
-
-        for key, value in data.items():
-            setattr(review, key, value)
-
-        db.session.commit()
-        return review
+    data = request.get_json()
+    review.comment = data.get('comment', review.comment)
+    review.rating = data.get('rating', review.rating)
+    db.session.commit()
+    return jsonify(review.to_dict()), 200
 

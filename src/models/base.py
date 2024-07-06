@@ -1,15 +1,11 @@
-""" Abstract base class for all models """
-
 from datetime import datetime
 from typing import Any, Optional
 import uuid
-from abc import ABC, abstractmethod
 from src import db
 
-
-class Base(ABC, db.Model):
+class Base(db.Model):
     """
-    Base Interface for all models
+    Base class for all models.
     """
 
     __abstract__ = True
@@ -26,49 +22,32 @@ class Base(ABC, db.Model):
         **kwargs,
     ) -> None:
         """
-        Base class constructor
-        If kwargs are provided, set them as attributes
+        Base class constructor.
+        If kwargs are provided, set them as attributes.
         """
-
-        if kwargs:
-            for key, value in kwargs.items():
-                if hasattr(self, key):
-                    continue
-                setattr(self, key, value)
-
+        super().__init__(**kwargs)
         self.id = str(id or uuid.uuid4())
         self.created_at = created_at or datetime.now()
         self.updated_at = updated_at or datetime.now()
 
     @classmethod
-    def get(cls, id) -> "Any | None":
+    def get(cls, id) -> Optional[Any]:
         """
-        This is a common method to get an specific object
-        of a class by its id
-
-        If a class needs a different implementation,
-        it should override this method
+        Common method to get a specific object of a class by its id.
         """
         return cls.query.get(id)
 
     @classmethod
-    def get_all(cls) -> list["Any"]:
+    def get_all(cls) -> list[Any]:
         """
-        This is a common method to get all objects of a class
-
-        If a class needs a different implementation,
-        it should override this method
+        Common method to get all objects of a class.
         """
         return cls.query.all()
 
     @classmethod
     def delete(cls, id) -> bool:
         """
-        This is a common method to delete an specific
-        object of a class by its id
-
-        If a class needs a different implementation,
-        it should override this method
+        Common method to delete a specific object of a class by its id.
         """
         obj = cls.get(id)
         if not obj:
@@ -77,16 +56,25 @@ class Base(ABC, db.Model):
         db.session.commit()
         return True
 
-    @abstractmethod
     def to_dict(self) -> dict:
-        """Returns the dictionary representation of the object"""
+        """
+        Returns the dictionary representation of the object.
+        This should be overridden by subclasses.
+        """
+        raise NotImplementedError("Subclasses must implement this method")
 
     @staticmethod
-    @abstractmethod
     def create(data: dict) -> Any:
-        """Creates a new object of the class"""
+        """
+        Creates a new object of the class.
+        This should be overridden by subclasses.
+        """
+        raise NotImplementedError("Subclasses must implement this method")
 
     @staticmethod
-    @abstractmethod
-    def update(entity_id: str, data: dict) -> Any | None:
-        """Updates an object of the class"""
+    def update(entity_id: str, data: dict) -> Optional[Any]:
+        """
+        Updates an object of the class.
+        This should be overridden by subclasses.
+        """
+        raise NotImplementedError("Subclasses must implement this method")

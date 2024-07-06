@@ -1,30 +1,17 @@
+#!/usr/bin/python3
 import os
 
 class Config:
-    """This would be the base config"""
+    SECRET_KEY = os.getenv('SECRET_KEY', 'your_default_secret_key')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SECRET_KEY = 'supersecretkey' or 'idkdontask'
-    
-class DevelopmentConfig(Config):
-    """Dev config"""
-    DEBUG = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///dev.db'
-    
-class TestingConfig(Config):
-    """Testing config"""
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your_jwt_secret_key')
+
+class Development(Config):
+    SQLALCHEMY_DATABASE_URI = os.getenv('DEV_DATABASE_URI', 'sqlite:///dev.db')
+
+class Testing(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-    SQLALCHEMY_ECHO = False
-    WTF_CSRF_ENABLED = False
-    
-class ProductionConfig(Config):
-    """Production config"""
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        'DATABASE_URL') or 'sqlite:///prod.db'
-    
-    
-config_by_name = dict(
-    development=DevelopmentConfig,
-    test=TestingConfig,
-    production=ProductionConfig
-)
+    SQLALCHEMY_DATABASE_URI = os.getenv('TEST_DATABASE_URI', 'sqlite:///test.db')
+
+class Production(Config):
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URI', 'postgresql://user:password@localhost/db_name')

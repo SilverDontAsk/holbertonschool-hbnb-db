@@ -1,4 +1,4 @@
-from src import db
+from src import db, bcrypt
 from werkzeug.security import generate_password_hash, check_password_hash
 
 class User(db.Model):
@@ -13,7 +13,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, onupdate=db.func.current_timestamp())
     is_admin = db.Column(db.Boolean, default=False)
-    password_hash = db.Column(db.String, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
 
     def __init__(self, email: str, first_name: str, last_name: str, password: str, **kwargs):
         super().__init__(**kwargs)

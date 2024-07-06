@@ -1,60 +1,73 @@
-"""
-Cities controller module
-"""
-
-from flask import request, abort
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt
+from src import db
 from src.models.city import City
+from src.models.country import Country
 
+cities_bp = Blueprint('cities_bp', __name__)
 
-def get_cities():
-    """Returns all cities"""
-    cities: list[City] = City.get_all()
-
-    return [city.to_dict() for city in cities]
-
-
+@cities_bp.route('/cities', methods=['POST'])
+@jwt_required()
 def create_city():
-    """Creates a new city"""
+    claims = get_jwt()
+    if not claims.get('is_admin'):
+        return jsonify({"msg": "Administration rights required"}), 403
+    
     data = request.get_json()
+    country = Country.query.get(data['country_id'])
+    if not country:
+        return jsonify({"msg": "Country not found"}), 404
 
-    try:
-        city = City.create(data)
-    except KeyError as e:
-        abort(400, f"Missing field: {e}")
-    except ValueError as e:
-        abort(400, str(e))
+    new_city = City(name=data['name'], country_id=data['country_id'])
+    db.session.add(new_city)
+    db.session.commit()
+    return jsonify(new_city.to_dict()), 201
 
-    return city.to_dict(), 201
-
-
-def get_city_by_id(city_id: str):
-    """Returns a city by ID"""
-    city: City | None = City.get(city_id)
-
+@cities_bp.route('/cities/<city_id>', methods=['DELETE'])
+@jwt_required()
+def delete_city(city_id):
+    claims = get_jwt()
+    if not claims.get('is_admin'):
+        return jsonify({"msg": "Administration rights required"}), 403
+    
+    city = City.query.get(city_id)
     if not city:
-        abort(404, f"City with ID {city_id} not found")
+        return jsonify({"msg": "City not found"}), 404
 
-    return city.to_dict()
+    db.session.delete(city)
+    db.session.commit()
+    return jsonify({"msg": "City deleted"}), 200
 
+@cities_bp.route('/cities', methods=['GET'])
+def get_cities():
+    cities = City.query.all()
+    return jsonify([city.to_dict() for city in cities]), 200
 
-def update_city(city_id: str):
-    """Updates a city by ID"""
+@cities_bp.route('/cities/<city_id>', methods=['GET'])
+def get_city_by_id(city_id):
+    city = City.query.get(city_id)
+    if not city:
+        return jsonify({"msg": "City not found"}), 404
+    return jsonify(city.to_dict()), 200
+
+@cities_bp.route('/cities/<city_id>', methods=['PUT'])
+@jwt_required()
+def update_city(city_id):
+    claims = get_jwt()
+    if not claims.get('is_admin'):
+        return jsonify({"msg": "Administration rights required"}), 403
+
+    city = City.query.get(city_id)
+    if not city:
+        return jsonify({"msg": "City not found"}), 404
+
     data = request.get_json()
-
-    try:
-        city: City | None = City.update(city_id, data)
-    except ValueError as e:
-        abort(400, str(e))
-
-    if not city:
-        abort(404, f"City with ID {city_id} not found")
-
-    return city.to_dict()
-
-
-def delete_city(city_id: str):
-    """Deletes a city by ID"""
-    if not City.delete(city_id):
-        abort(404, f"City with ID {city_id} not found")
-
-    return "", 204
+    if 'country_id' in data:
+        country = Country.query.get(data['country_id'])
+        if not country:
+            return jsonify({"msg": "Country not found"}), 404
+        city.country_id = data['country_id']
+    
+    city.name = data.get('name', city.name)
+    db.session.commit()
+    return jsonify(city.to_dict()), 200

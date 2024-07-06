@@ -15,30 +15,23 @@ if env == 'production':
 else:
     from src.config import DevelopmentConfig as Config
 
+# Initialize SQLAlchemy outside of fixtures
+app = Flask(__name__)
+app.config.from_object(Config)
+app.config['TESTING'] = True
+db = SQLAlchemy(app)
+
+# Ensure database exists for SQLite
+if Config.SQLALCHEMY_DATABASE_URI.startswith('sqlite:///'):
+    database_path = Config.SQLALCHEMY_DATABASE_URI.replace('sqlite:///', '')
+    if not os.path.exists(database_path):
+        with app.app_context():
+            db.create_all()
+
 @pytest.fixture(scope='module')
 def test_app():
-    """Create and configure a new app instance for each test."""
-    app = Flask(__name__)
-    app.config.from_object(Config)
-    app.config['TESTING'] = True
-
-    # Initialize SQLAlchemy
-    db = SQLAlchemy(app)
-
-    # Ensure database exists for SQLite
-    if Config.SQLALCHEMY_DATABASE_URI.startswith('sqlite:///'):
-        database_path = Config.SQLALCHEMY_DATABASE_URI.replace('sqlite:///', '')
-        if not os.path.exists(database_path):
-            with app.app_context():
-                db.create_all()
-
-    with app.app_context():
-        yield app
-
-    # Clean up / reset resources here
-    if Config.SQLALCHEMY_DATABASE_URI.startswith('sqlite:///'):
-        if os.path.exists(database_path):
-            os.remove(database_path)
+    """Return the Flask app instance."""
+    return app
 
 @pytest.fixture(scope='module')
 def test_client(test_app):
@@ -48,8 +41,6 @@ def test_client(test_app):
 @pytest.fixture(scope='module')
 def init_database(test_app):
     """Create a clean database for testing."""
-    db = SQLAlchemy(test_app)
-
     with test_app.app_context():
         db.create_all()
 

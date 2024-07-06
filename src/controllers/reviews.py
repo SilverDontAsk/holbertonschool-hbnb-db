@@ -1,81 +1,77 @@
-"""
-Reviews controller module
-"""
-
-from flask import abort, request
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
+from src import db
 from src.models.review import Review
+from src.models.user import User
+from src.models.place import Place
 
+reviews_bp = Blueprint('reviews_bp', __name__)
 
+@reviews_bp.route('/reviews', methods=['POST'])
+@jwt_required()
+def create_review():
+    user_id = get_jwt_identity()
+    data = request.get_json()
+    new_review = Review(
+        user_id=user_id,
+        place_id=data['place_id'],
+        comment=data['comment'],
+        rating=data['rating']
+    )
+    db.session.add(new_review)
+    db.session.commit()
+    return jsonify(new_review.to_dict()), 201
+
+@reviews_bp.route('/reviews/<review_id>', methods=['DELETE'])
+@jwt_required()
+def delete_review(review_id):
+    claims = get_jwt()
+    review = Review.query.get(review_id)
+    if not review:
+        return jsonify({"msg": "Review not found"}), 404
+
+    if not claims.get('is_admin') and review.user_id != get_jwt_identity():
+        return jsonify({"msg": "Administration rights required"}), 403
+
+    db.session.delete(review)
+    db.session.commit()
+    return jsonify({"msg": "Review deleted"}), 200
+
+@reviews_bp.route('/reviews', methods=['GET'])
 def get_reviews():
-    """Returns all reviews"""
-    reviews = Review.get_all()
+    reviews = Review.query.all()
+    return jsonify([review.to_dict() for review in reviews]), 200
 
-    return [review.to_dict() for review in reviews], 200
-
-
-def create_review(place_id: str):
-    """Creates a new review"""
-    data = request.get_json()
-
-    if "user_id" not in data:
-        abort(400, "Missing field: user_id")
-
-    try:
-        review = Review.create(data | {"place_id": place_id})
-    except KeyError as e:
-        abort(400, f"Missing field: {e}")
-    except ValueError as e:
-        abort(400, str(e))
-
-    return review.to_dict(), 201
-
-
-def get_reviews_from_place(place_id: str):
-    """Returns all reviews from a specific place"""
-    reviews = Review.get_all()
-
-    return [
-        review.to_dict() for review in reviews if review.place_id == place_id
-    ], 200
-
-
-def get_reviews_from_user(user_id: str):
-    """Returns all reviews from a specific user"""
-    reviews = Review.get_all()
-
-    return [
-        review.to_dict() for review in reviews if review.user_id == user_id
-    ], 200
-
-
-def get_review_by_id(review_id: str):
-    """Returns a review by ID"""
-    review: Review | None = Review.get(review_id)
-
+@reviews_bp.route('/reviews/<review_id>', methods=['GET'])
+def get_review_by_id(review_id):
+    review = Review.query.get(review_id)
     if not review:
-        abort(404, f"Review with ID {review_id} not found")
+        return jsonify({"msg": "Review not found"}), 404
+    return jsonify(review.to_dict()), 200
 
-    return review.to_dict(), 200
+@reviews_bp.route('/places/<place_id>/reviews', methods=['GET'])
+def get_reviews_from_place(place_id):
+    reviews = Review.query.filter_by(place_id=place_id).all()
+    return jsonify([review.to_dict() for review in reviews]), 200
 
+@reviews_bp.route('/users/<user_id>/reviews', methods=['GET'])
+def get_reviews_from_user(user_id):
+    reviews = Review.query.filter_by(user_id=user_id).all()
+    return jsonify([review.to_dict() for review in reviews]), 200
 
-def update_review(review_id: str):
-    """Updates a review by ID"""
-    data = request.get_json()
-
-    try:
-        review: Review | None = Review.update(review_id, data)
-    except ValueError as e:
-        abort(400, str(e))
-
+@reviews_bp.route('/reviews/<review_id>', methods=['PUT'])
+@jwt_required()
+def update_review(review_id):
+    claims = get_jwt()
+    review = Review.query.get(review_id)
     if not review:
-        abort(404, f"Review with ID {review_id} not found")
+        return jsonify({"msg": "Review not found"}), 404
 
-    return review.to_dict(), 200
+    if not claims.get('is_admin') and review.user_id != get_jwt_identity():
+        return jsonify({"msg": "Administration rights required"}), 403
 
-
-def delete_review(review_id: str):
-    """Deletes a review by ID"""
-    if not Review.delete(review_id):
-        abort(404, f"Review with ID {review_id} not found")
-
-    return "", 204
+    data = request.get_json()
+    review.comment = data.get('comment', review.comment)
+    review.rating = data.get('rating', review.rating)
+    db.session.commit()
+    return jsonify(review.to_dict()), 200
